@@ -1,4 +1,4 @@
-;;; project_dashboard.el --- A dashboard which shows the org-roam projects  -*- lexical-binding: t; coding: utf-8 -*-
+;;; org-roam-project_dashboard.el --- A dashboard which shows the org-roam projects  -*- lexical-binding: t; coding: utf-8 -*-
 
 ;; Copyright (C) 24 August 2024
 ;;
@@ -58,6 +58,18 @@
                 tag)))
     nodes))
 
+(defun org-roam-project-dashboard-keep-task-predicate (task)
+  "Predicate to determine if a TASK should be considered as an actual task.
+The rule implemented in this function is that a valid task should not have a progression indicator."
+  (let ((title (nth 1 task)))
+    (not (string-match-p "\\[\\([0-9]+%\\|[0-9]+/[0-9]+\\)\\]$" title))))
+
+(defun org-roam-project-dashboard-keep-todo-predicate (task)
+  "Predicate to determine if the TASK remains to be done or not.
+This predicate considers only TODO tasks to be done."
+  (let ((title (nth 2 task)))
+    (string-match-p "^TODO$" title)))
+
 (defun org-roam-project-dashboard--get-project-tasks (node-id)
   "Get all tasks (TODOs) in the project with NODE-ID, including its subnodes."
   (let ((tasks (org-roam-db-query
@@ -70,13 +82,9 @@
                                                        :from nodes in_nodes
                                                        :where (= in_nodes:id $s1)])
                                      (not (null out_nodes:todo))
-                                     (not (or (like out_nodes:title '"%Task %")
-                                              (like out_nodes:title '"%task %")
-                                              (like out_nodes:title '"%Tasks %")
-                                              (like out_nodes:title '"%tasks %")))
                                      )]
                 node-id)))
-    tasks))
+    (cl-remove-if-not #'org-roam-project-dashboard-keep-task-predicate tasks)))
 
 (defun org-roam-project-dashboard--calculate-progress (node-id)
   "Calculate the completion progress of the project with NODE-ID, including its subnodes."
@@ -132,27 +140,26 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
          (sorted-projects (sort projects (lambda (a b) (string< (cadr a) (cadr b))))))  ;; Optional sorting by title
 
     (magit-insert-section (magit-section tag)
-      (magit-insert-heading (propertize tag 'face ''((t :inherit outline-1 :weight ultra-bold :height 150))))
+      (magit-insert-heading (propertize tag 'face '((:inherit outline-1 :weight ultra-bold :height 150))))
       (dolist (project sorted-projects)
         (let* ((node-id (car project))
                (title (cadr project))
                (progress (org-roam-project-dashboard--calculate-progress node-id))
                (progress-bar (org-roam-project-dashboard--generate-progress-bar progress))
                (padded-string (make-string (+ padding (- longest-title-length (length title))) ? ))
-               (tasks (remq nil (mapcar (lambda (x) (when (string= (caddr x) "TODO") x))
-                                        (org-roam-project-dashboard--get-project-tasks node-id)))))
-
+               (tasks (cl-remove-if-not #'org-roam-project-dashboard-keep-todo-predicate
+                                        (org-roam-project-dashboard--get-project-tasks node-id))))
           (magit-insert-section (magit-section node-id 'hide)
             (magit-insert-heading
               (insert
-               (format " [[id:%s][%s]]%s %s\n" node-id title padded-string progress-bar)))
+               (format " [[id:%s][%s]] %s%s\n" node-id title padded-string progress-bar)))
             (magit-insert-section-body
               (dolist (task (if (> org-roam-project-dashboard-threshold-tasks 0)
                                 (seq-take tasks org-roam-project-dashboard-threshold-tasks)
                               tasks))
-                (let* ((task-title (car task))
-                       (task-id (cadr task)))
-                  (insert (format "  - [[id:%s][%s]]\n" task-title task-id))))
+                (let* ((task-id (car task))
+                       (task-title (cadr task)))
+                  (insert (format "  - TODO [[id:%s][%s]]\n" task-id task-title))))
               (insert "\n")
               )))))))
 
