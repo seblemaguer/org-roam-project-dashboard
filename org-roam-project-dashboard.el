@@ -1,13 +1,13 @@
-;;; org-roam-project_dashboard.el --- A dashboard which shows the org-roam projects  -*- lexical-binding: t; coding: utf-8 -*-
+;;; org-roam-project-dashboard.el --- A dashboard which shows the org-roam projects  -*- lexical-binding: t; coding: utf-8 -*-
 
 ;; Copyright (C) 24 August 2024
 ;;
 
 ;; Author: Sébastien Le Maguer <sebastien.lemaguer@helsinki.fi> and ChatGPT
-
+;; Version: 0.1
 ;; Package-Requires: ((emacs "29.1") (org-roam "2.2.0") (magit-section "0.1"))
-;; Keywords:
-;; Homepage:
+;; Keywords: outlines, org-roam, dashboard, project, tags
+;; Homepage: https://github.com/seblemaguer/org-roam-project-dashboard
 
 ;; project_dashboard is free software; you can redistribute it and/or modify it
 ;; under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@
 
 ;;; Commentary:
 
+;; This package provides a quick way to spawn a dashboard generated
+;; using org-roam's data.
 
 ;;; Code:
 
@@ -81,8 +83,7 @@ This predicate considers only TODO tasks to be done."
                                      (> level [:select in_nodes:level
                                                        :from nodes in_nodes
                                                        :where (= in_nodes:id $s1)])
-                                     (not (null out_nodes:todo))
-                                     )]
+                                     (not (null out_nodes:todo)))]
                 node-id)))
     (cl-remove-if-not #'org-roam-project-dashboard-keep-task-predicate tasks)))
 
@@ -95,7 +96,7 @@ This predicate considers only TODO tasks to be done."
         (/ (* 100 done) total)
       0)))
 
-(defun interpolate-color (color1 color2 percentage)
+(defun org-roam-project-dashboard~interpolate-color (color1 color2 percentage)
   "Interpolate between COLOR1 and COLOR2 based on PERCENTAGE.
 COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 0 and 255."
   (let ((r1 (nth 0 color1))
@@ -109,7 +110,7 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
      (+ g1 (round (* (/ percentage 100.0) (- g2 g1))))
      (+ b1 (round (* (/ percentage 100.0) (- b2 b1)))))))
 
-(defun rgb-to-hex (rgb)
+(defun org-roam-project-dashboard~rgb-to-hex (rgb)
   "Convert an RGB list to a hex color string."
   (format "#%02x%02x%02x" (nth 0 rgb) (nth 1 rgb) (nth 2 rgb)))
 
@@ -129,8 +130,8 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
          (end-color '(0 255 0))    ;; Green
          ;; Generate the gradient colors for the completed part
          (completed-bar (apply 'concat (mapcar (lambda (i)
-                                                 (let ((color (interpolate-color start-color end-color (* 100.0 (/ i (float bar-width))))))
-                                                   (propertize "█" 'face `(:foreground ,(rgb-to-hex color)))))
+                                                 (let ((color (org-roam-project-dashboard~interpolate-color start-color end-color (* 100.0 (/ i (float bar-width))))))
+                                                   (propertize "█" 'face `(:foreground ,(org-roam-project-dashboard~rgb-to-hex color)))))
                                                (number-sequence 1 completed))))
          ;; Color the uncompleted part with a shadow
          (uncompleted-bar (propertize (make-string uncompleted ?░) 'face 'shadow)))
@@ -165,23 +166,22 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
                     (let* ((task-id (car task))
                            (task-title (cadr task)))
                       (insert (format "  - TODO [[id:%s][%s]]\n" task-id task-title))))
-                  (insert "\n")
-                  )))))))))
+                  (insert "\n"))))))))))
 
-(defun open-org-roam-node-from-link ()
+(defun org-roam-project-dashboard-open-node-from-link ()
   "Open the Org-roam node corresponding to the ID stored in the text properties."
   (interactive)
   (let ((node-id (get-text-property (point) 'org-roam-id)))
     (when node-id
       (org-roam-id-open node-id nil))))
 
-(defun advise-magit-section-show-for-org-roam (&rest _args)
+(defun org-roam-project-dashboard~advice-magit-section-show (&rest _args)
   "Run `make-org-roam-links-clickable` after `magit-section-show`.
 Accepts any arguments passed by `magit-section-show` but ignores them."
   (let ((inhibit-read-only t))
     (make-org-roam-links-clickable)))
 
-(defun make-org-roam-links-clickable ()
+(defun org-roam-project-dashboard~make-links-clickable ()
   "Make org-roam links clickable and render them with only the title in the current buffer."
   (interactive)
   (let ((link-regex "\\(\\[\\[id:\\([^]]+\\)\\]\\[\\([^]]+\\)\\]\\]\\)"))
@@ -204,15 +204,15 @@ Accepts any arguments passed by `magit-section-show` but ignores them."
                                             help-echo ,(format "mouse-1: Visit org-roam node (id: %s / title: %s)" node-id title)
                                             follow-link t
                                             keymap ,(let ((map (make-sparse-keymap)))
-                                                      (define-key map (kbd "RET") 'open-org-roam-node-from-link)
-                                                      (define-key map [mouse-1]   'open-org-roam-node-from-link)
+                                                      (define-key map (kbd "RET") 'org-roam-project-dashboard-open-node-from-link)
+                                                      (define-key map [mouse-1]   'org-roam-project-dashboard-open-node-from-link)
                                                       map)
                                             org-roam-id ,node-id)))))))
 
 (define-derived-mode org-roam-project-dashboard-mode magit-section-mode "Project Dashboard"
   "Major mode for project dashboards based on magit-section-mode."
-  (make-org-roam-links-clickable)
-  (advice-add 'magit-section-show :after #'advise-magit-section-show-for-org-roam)
+  (org-roam-project-dashboard~make-links-clickable)
+  (advice-add 'magit-section-show :after #'org-roam-project-dashboard~advice-magit-section-show)
   (define-key org-roam-project-dashboard-mode-map "g" #'org-roam-project-dashboard-refresh))
 
 (defun org-roam-project-dashboard-refresh ()
