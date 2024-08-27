@@ -45,8 +45,32 @@
   :group 'org-roam-project-dashboard)
 
 (defcustom org-roam-project-dashboard-threshold-tasks 0
-  "Number of tasks to display per project in the dashboard. If <=0, list all the tasks "
+  "Number of tasks to display per project in the dashboard.
+If <=0, list all the tasks "
   :type 'integer
+  :group 'org-roam-project-dashboard)
+
+(defface org-roam-project-dashboard-todo
+  '((t :background "red1"
+                 :foreground "black"
+                 :weight bold
+                 :box (:line-width 2 :style released-button)))
+  "TODO face for org-roam-project-dashboard"
+  :group 'org-roam-project-dashboard)
+
+(defface org-roam-project-dashboard-header
+  '((t :inherit outline-1 :weight ultra-bold :height 150))
+  "Face for the header of a section in org-roam-project-dashboard."
+  :group 'org-roam-project-dashboard)
+
+(defface org-roam-project-dashboard-project
+  '((t :inherit outline-2 :weight bold))
+  "Face for the name of a project in org-roam-project-dashboard."
+  :group 'org-roam-project-dashboard)
+
+(defface org-roam-project-dashboard-task
+  '((t :inherit outline-4))
+  "Face for the title of a task in org-roam-project-dashboard."
   :group 'org-roam-project-dashboard)
 
 (defun org-roam-project-dashboard~get-projects (tag)
@@ -62,7 +86,8 @@
 
 (defun org-roam-project-dashboard-keep-task-predicate (task)
   "Predicate to determine if a TASK should be considered as an actual task.
-The rule implemented in this function is that a valid task should not have a progression indicator."
+The rule implemented in this function is that a valid task should
+not have a progression indicator."
   (let ((title (nth 1 task)))
     (not (string-match-p "\\[\\([0-9]+%\\|[0-9]+/[0-9]+\\)\\]$" title))))
 
@@ -73,7 +98,8 @@ This predicate considers only TODO tasks to be done."
     (string-match-p "^TODO$" title)))
 
 (defun org-roam-project-dashboard~get-project-tasks (node-id)
-  "Get all tasks (TODOs) in the project with NODE-ID, including its subnodes."
+  "Get all tasks (TODOs) in the project with NODE-ID, including its
+subnodes."
   (let ((tasks (org-roam-db-query
                 [:select [out_nodes:id out_nodes:title out_nodes:todo]
                          :from nodes out_nodes
@@ -88,7 +114,8 @@ This predicate considers only TODO tasks to be done."
     (cl-remove-if-not #'org-roam-project-dashboard-keep-task-predicate tasks)))
 
 (defun org-roam-project-dashboard~calculate-progress (node-id)
-  "Calculate the completion progress of the project with NODE-ID, including its subnodes."
+  "Calculate the completion progress of the project with NODE-ID,
+including its subnodes."
   (let* ((tasks (org-roam-project-dashboard~get-project-tasks node-id))
          (total (length tasks))
          (done (cl-count "DONE" tasks :key #'caddr :test #'string=)))
@@ -97,8 +124,9 @@ This predicate considers only TODO tasks to be done."
       0)))
 
 (defun org-roam-project-dashboard~interpolate-color (color1 color2 percentage)
-  "Interpolate between COLOR1 and COLOR2 based on PERCENTAGE.
-COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 0 and 255."
+  "Interpolate between COLOR1 and COLOR2 based on PERCENTAGE. COLOR1
+and COLOR2 should be in the format \\'(r g b), where each value is
+between 0 and 255."
   (let ((r1 (nth 0 color1))
         (g1 (nth 1 color1))
         (b1 (nth 2 color1))
@@ -129,24 +157,35 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
          (start-color '(255 0 0))  ;; Red
          (end-color '(0 255 0))    ;; Green
          ;; Generate the gradient colors for the completed part
-         (completed-bar (apply 'concat (mapcar (lambda (i)
-                                                 (let ((color (org-roam-project-dashboard~interpolate-color start-color end-color (* 100.0 (/ i (float bar-width))))))
-                                                   (propertize "█" 'face `(:foreground ,(org-roam-project-dashboard~rgb-to-hex color)))))
-                                               (number-sequence 1 completed))))
+         (completed-bar
+          (apply 'concat
+                 (mapcar (lambda (i)
+                           (let ((color (org-roam-project-dashboard~interpolate-color
+                                         start-color end-color
+                                         (* 100.0 (/ i (float bar-width))))))
+                             (propertize "█"
+                                         'face
+                                         `(:foreground ,(org-roam-project-dashboard~rgb-to-hex color)))))
+                         (number-sequence 1 completed))))
          ;; Color the uncompleted part with a shadow
          (uncompleted-bar (propertize (make-string uncompleted ?░) 'face 'shadow)))
     (concat completed-bar uncompleted-bar (format " %d%%" percentage))))
 
 (defun org-roam-project-dashboard~insert-projects (tag)
-  "Insert the list of PROJECTS into the dashboard buffer, with magit-sections and aligned progress bars."
+  "Insert the list of PROJECTS into the dashboard buffer, with
+magit-sections and aligned progress bars."
   (let ((projects (org-roam-project-dashboard~get-projects tag)))
     (when projects
       (let* ((longest-title-length
               (apply 'max (mapcar (lambda (project) (length (cadr project))) projects)))
-             (padding 4)  ;; Additional padding between the title and progress bar
-             (sorted-projects (sort projects (lambda (a b) (string< (cadr a) (cadr b))))))  ;; Optional sorting by title
+             (padding 4)
+             (sorted-projects (sort projects (lambda (a b) (string< (cadr a) (cadr b))))))
         (magit-insert-section (magit-section tag)
-          (magit-insert-heading (propertize (org-roam-project-dashboard~format-section tag) 'face '((:inherit outline-1 :weight ultra-bold :height 150))))
+          (magit-insert-heading
+            (propertize (org-roam-project-dashboard~format-section tag)
+                        'face
+                        'org-roam-project-dashboard-header))
+
           (dolist (project sorted-projects)
             (let* ((node-id (car project))
                    (title (cadr project))
@@ -158,7 +197,7 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
               (magit-insert-section (magit-section node-id 'hide)
                 (magit-insert-heading
                   (insert " ")
-                  (insert (propertize (format "[[id:%s][%s]]" node-id title) 'face '((:inherit outline-2 :weight bold))))
+                  (insert (propertize (format "[[id:%s][%s]]" node-id title) 'face 'org-roam-project-dashboard-project))
                   (insert (format " %s%s\n"  padded-string progress-bar)))
                 (magit-insert-section-body
                   (dolist (task (if (> org-roam-project-dashboard-threshold-tasks 0)
@@ -167,9 +206,9 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
                     (let* ((task-id (car task))
                            (task-title (cadr task)))
                       (insert "  - ")
-                      (insert (propertize " TODO " 'face '((:inherit outline-2 :background "red1" :foreground "black" :weight bold :box (:line-width 2 :style released-button)))))
+                      (insert (propertize " TODO " 'face 'org-roam-project-dashboard-todo))
                       (insert " ")
-                      (insert (propertize (format "[[id:%s][%s]]\n" task-id task-title) 'face '((:inherit outline-4))))))
+                      (insert (propertize (format "[[id:%s][%s]]\n" task-id task-title) 'face 'org-roam-project-dashboard-task))))
                   (insert "\n"))))))))))
 
 (defun org-roam-project-dashboard-open-node-from-link ()
