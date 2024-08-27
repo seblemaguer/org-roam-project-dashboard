@@ -157,15 +157,19 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
                                             (org-roam-project-dashboard~get-project-tasks node-id))))
               (magit-insert-section (magit-section node-id 'hide)
                 (magit-insert-heading
-                  (insert
-                   (format " [[id:%s][%s]] %s%s\n" node-id title padded-string progress-bar)))
+                  (insert " ")
+                  (insert (propertize (format "[[id:%s][%s]]" node-id title) 'face '((:inherit outline-2 :weight bold))))
+                  (insert (format " %s%s\n"  padded-string progress-bar)))
                 (magit-insert-section-body
                   (dolist (task (if (> org-roam-project-dashboard-threshold-tasks 0)
                                     (seq-take tasks org-roam-project-dashboard-threshold-tasks)
                                   tasks))
                     (let* ((task-id (car task))
                            (task-title (cadr task)))
-                      (insert (format "  - TODO [[id:%s][%s]]\n" task-id task-title))))
+                      (insert "  - ")
+                      (insert (propertize " TODO " 'face '((:inherit outline-2 :background "red1" :foreground "black" :weight bold :box (:line-width 2 :style released-button)))))
+                      (insert " ")
+                      (insert (propertize (format "[[id:%s][%s]]\n" task-id task-title) 'face '((:inherit outline-4))))))
                   (insert "\n"))))))))))
 
 (defun org-roam-project-dashboard-open-node-from-link ()
@@ -179,24 +183,23 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
   "Run `make-org-roam-links-clickable` after `magit-section-show`.
 Accepts any arguments passed by `magit-section-show` but ignores them."
   (let ((inhibit-read-only t))
-    (make-org-roam-links-clickable)))
+    (org-roam-project-dashboard~make-links-clickable)))
 
 (defun org-roam-project-dashboard~make-links-clickable ()
-  "Make org-roam links clickable and render them with only the title in the current buffer."
+  "Make org-roam links clickable and render them with only the title
+in the current buffer."
   (interactive)
-  (let ((link-regex "\\(\\[\\[id:\\([^]]+\\)\\]\\[\\([^]]+\\)\\]\\]\\)"))
+  (let ((link-regex "\\[\\[id:\\([^]]+\\)\\]\\[\\([^]]+\\)\\]\\]"))
     (save-excursion
       (goto-char (point-min))
       (while (re-search-forward link-regex nil t)
-        (let* ((full-link (match-string 1))
-               (node-id (match-string 2))
-               (title (match-string 3))
-               (start (match-beginning 0))
-               (end (match-end 0)))
+        (let* ((node-id (match-string 1))
+               (title (match-string 2))
+               (start (match-beginning 0)))
 
           ;; Replace the link with the title
-          (delete-region start end)
-          (insert  (propertize title 'face '((:inherit outline-2))))
+          (delete-region start (+ start (length node-id) 7))
+          (delete-region (+ start (length title)) (+ start (length title) 2))
 
           ;; Apply clickable properties to the title
           (add-text-properties start (+ start (length title))
@@ -211,7 +214,6 @@ Accepts any arguments passed by `magit-section-show` but ignores them."
 
 (define-derived-mode org-roam-project-dashboard-mode magit-section-mode "Project Dashboard"
   "Major mode for project dashboards based on magit-section-mode."
-  (org-roam-project-dashboard~make-links-clickable)
   (advice-add 'magit-section-show :after #'org-roam-project-dashboard~advice-magit-section-show)
   (define-key org-roam-project-dashboard-mode-map "g" #'org-roam-project-dashboard-refresh))
 
@@ -228,7 +230,8 @@ Accepts any arguments passed by `magit-section-show` but ignores them."
         (magit-insert-section (magit-section "root")
           (dolist (tag org-roam-project-dashboard-list-tags)
             (org-roam-project-dashboard~insert-projects tag)
-            (insert "\n"))))
+            (insert "\n")))
+        (org-roam-project-dashboard~make-links-clickable))
     (error "This function is only useable in org-roam-project-dashboard-mode")))
 
 ;;;###autoload
