@@ -113,6 +113,12 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
   "Convert an RGB list to a hex color string."
   (format "#%02x%02x%02x" (nth 0 rgb) (nth 1 rgb) (nth 2 rgb)))
 
+(defun org-roam-project-dashboard~format-section (section-name)
+  "Format the SECTION-NAME to be more readable."
+  (setq section-name (replace-regexp-in-string "_" " " section-name))
+  (concat (upcase (substring section-name 0 1))
+          (downcase (substring section-name 1))))
+
 (defun org-roam-project-dashboard--generate-progress-bar (percentage)
   "Generate a color gradient progress bar for PERCENTAGE."
   (let* ((bar-width 30)
@@ -139,7 +145,7 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
              (padding 4)  ;; Additional padding between the title and progress bar
              (sorted-projects (sort projects (lambda (a b) (string< (cadr a) (cadr b))))))  ;; Optional sorting by title
         (magit-insert-section (magit-section tag)
-          (magit-insert-heading (propertize tag 'face '((:inherit outline-1 :weight ultra-bold :height 150))))
+          (magit-insert-heading (propertize (org-roam-project-dashboard~format-section tag) 'face '((:inherit outline-1 :weight ultra-bold :height 150))))
           (dolist (project sorted-projects)
             (let* ((node-id (car project))
                    (title (cadr project))
