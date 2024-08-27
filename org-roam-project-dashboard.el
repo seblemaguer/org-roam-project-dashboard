@@ -167,8 +167,7 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
   (interactive)
   (let ((node-id (get-text-property (point) 'org-roam-id)))
     (when node-id
-      ;; (message "node-id - %s: (%s, %s)" node-id (type-of node-id) (org-roam-node-from-id node-id))
-      (org-roam-node-visit (org-roam-node-from-id node-id)))))
+      (org-roam-id-open node-id nil))))
 
 (defun advise-magit-section-show-for-org-roam (&rest _args)
   "Run `make-org-roam-links-clickable` after `magit-section-show`.
@@ -191,16 +190,16 @@ Accepts any arguments passed by `magit-section-show` but ignores them."
 
           ;; Replace the link with the title
           (delete-region start end)
-          (insert (propertize title 'face 'link))
+          (insert  (propertize title 'face '((:inherit outline-2))))
 
           ;; Apply clickable properties to the title
           (add-text-properties start (+ start (length title))
                                `(mouse-face highlight
-                                            help-echo ,(format "mouse-1: Visit org-roam node (id: %s)" node-id)
+                                            help-echo ,(format "mouse-1: Visit org-roam node (id: %s / title: %s)" node-id title)
                                             follow-link t
                                             keymap ,(let ((map (make-sparse-keymap)))
                                                       (define-key map (kbd "RET") 'open-org-roam-node-from-link)
-                                                      (define-key map [mouse-1] 'open-org-roam-node-from-link)
+                                                      (define-key map [mouse-1]   'open-org-roam-node-from-link)
                                                       map)
                                             org-roam-id ,node-id)))))))
 
