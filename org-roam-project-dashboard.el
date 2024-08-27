@@ -218,6 +218,8 @@ Accepts any arguments passed by `magit-section-show` but ignores them."
       (erase-buffer)
       (insert "Project Dashboard\n")
       (insert "=================\n\n")
+      (unless org-roam-project-dashboard-list-tags
+        (error "The list of tags should not be empty!"))
       (magit-insert-section (magit-section "root")
         (dolist (tag org-roam-project-dashboard-list-tags)
           (org-roam-project-dashboard--insert-projects tag)
