@@ -206,25 +206,33 @@ Accepts any arguments passed by `magit-section-show` but ignores them."
 (define-derived-mode org-roam-project-dashboard-mode magit-section-mode "Project Dashboard"
   "Major mode for project dashboards based on magit-section-mode."
   (make-org-roam-links-clickable)
-  (advice-add 'magit-section-show :after #'advise-magit-section-show-for-org-roam))
+  (advice-add 'magit-section-show :after #'advise-magit-section-show-for-org-roam)
+  (define-key org-roam-project-dashboard-mode-map "g" #'org-roam-project-dashboard-refresh))
+
+(defun org-roam-project-dashboard-refresh ()
+  "Refresh the content of the org roam project dashboard"
+  (interactive)
+  (if (eq (buffer-local-value 'major-mode (current-buffer)) 'org-roam-project-dashboard-mode)
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert "Project Dashboard\n")
+        (insert "=================\n\n")
+        (unless org-roam-project-dashboard-list-tags
+          (error "The list of tags should not be empty!"))
+        (magit-insert-section (magit-section "root")
+          (dolist (tag org-roam-project-dashboard-list-tags)
+            (org-roam-project-dashboard--insert-projects tag)
+            (insert "\n"))))
+    (error "This function is only useable in org-roam-project-dashboard-mode")))
 
 ;;;###autoload
 (defun org-roam-project-dashboard-show ()
   "Show the project dashboard."
   (interactive)
   (with-current-buffer (get-buffer-create org-roam-project-dashboard-buffer-name)
-    (let ((inhibit-read-only t))
-      (erase-buffer)
-      (insert "Project Dashboard\n")
-      (insert "=================\n\n")
-      (unless org-roam-project-dashboard-list-tags
-        (error "The list of tags should not be empty!"))
-      (magit-insert-section (magit-section "root")
-        (dolist (tag org-roam-project-dashboard-list-tags)
-          (org-roam-project-dashboard--insert-projects tag)
-          (insert "\n")))
-      (org-roam-project-dashboard-mode)
-      (switch-to-buffer (current-buffer)))))
+    (org-roam-project-dashboard-mode)
+    (org-roam-project-dashboard-refresh)
+    (switch-to-buffer (current-buffer))))
 
 (provide 'org-roam-project-dashboard)
 
