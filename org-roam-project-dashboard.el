@@ -130,44 +130,44 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
          (uncompleted-bar (propertize (make-string uncompleted ?░) 'face 'shadow)))
     (concat completed-bar uncompleted-bar (format " %d%%" percentage))))
 
-
 (defun org-roam-project-dashboard--insert-projects (tag)
   "Insert the list of PROJECTS into the dashboard buffer, with magit-sections and aligned progress bars."
-  (let* ((projects (org-roam-project-dashboard--get-projects tag))
-         (longest-title-length
-          (apply 'max (mapcar (lambda (project) (length (cadr project))) projects)))
-         (padding 4)  ;; Additional padding between the title and progress bar
-         (sorted-projects (sort projects (lambda (a b) (string< (cadr a) (cadr b))))))  ;; Optional sorting by title
-
-    (magit-insert-section (magit-section tag)
-      (magit-insert-heading (propertize tag 'face '((:inherit outline-1 :weight ultra-bold :height 150))))
-      (dolist (project sorted-projects)
-        (let* ((node-id (car project))
-               (title (cadr project))
-               (progress (org-roam-project-dashboard--calculate-progress node-id))
-               (progress-bar (org-roam-project-dashboard--generate-progress-bar progress))
-               (padded-string (make-string (+ padding (- longest-title-length (length title))) ? ))
-               (tasks (cl-remove-if-not #'org-roam-project-dashboard-keep-todo-predicate
-                                        (org-roam-project-dashboard--get-project-tasks node-id))))
-          (magit-insert-section (magit-section node-id 'hide)
-            (magit-insert-heading
-              (insert
-               (format " [[id:%s][%s]] %s%s\n" node-id title padded-string progress-bar)))
-            (magit-insert-section-body
-              (dolist (task (if (> org-roam-project-dashboard-threshold-tasks 0)
-                                (seq-take tasks org-roam-project-dashboard-threshold-tasks)
-                              tasks))
-                (let* ((task-id (car task))
-                       (task-title (cadr task)))
-                  (insert (format "  - TODO [[id:%s][%s]]\n" task-id task-title))))
-              (insert "\n")
-              )))))))
+  (let ((projects (org-roam-project-dashboard--get-projects tag)))
+    (when projects
+      (let* ((longest-title-length
+              (apply 'max (mapcar (lambda (project) (length (cadr project))) projects)))
+             (padding 4)  ;; Additional padding between the title and progress bar
+             (sorted-projects (sort projects (lambda (a b) (string< (cadr a) (cadr b))))))  ;; Optional sorting by title
+        (magit-insert-section (magit-section tag)
+          (magit-insert-heading (propertize tag 'face '((:inherit outline-1 :weight ultra-bold :height 150))))
+          (dolist (project sorted-projects)
+            (let* ((node-id (car project))
+                   (title (cadr project))
+                   (progress (org-roam-project-dashboard--calculate-progress node-id))
+                   (progress-bar (org-roam-project-dashboard--generate-progress-bar progress))
+                   (padded-string (make-string (+ padding (- longest-title-length (length title))) ? ))
+                   (tasks (cl-remove-if-not #'org-roam-project-dashboard-keep-todo-predicate
+                                            (org-roam-project-dashboard--get-project-tasks node-id))))
+              (magit-insert-section (magit-section node-id 'hide)
+                (magit-insert-heading
+                  (insert
+                   (format " [[id:%s][%s]] %s%s\n" node-id title padded-string progress-bar)))
+                (magit-insert-section-body
+                  (dolist (task (if (> org-roam-project-dashboard-threshold-tasks 0)
+                                    (seq-take tasks org-roam-project-dashboard-threshold-tasks)
+                                  tasks))
+                    (let* ((task-id (car task))
+                           (task-title (cadr task)))
+                      (insert (format "  - TODO [[id:%s][%s]]\n" task-id task-title))))
+                  (insert "\n")
+                  )))))))))
 
 (defun open-org-roam-node-from-link ()
   "Open the Org-roam node corresponding to the ID stored in the text properties."
   (interactive)
   (let ((node-id (get-text-property (point) 'org-roam-id)))
     (when node-id
+      ;; (message "node-id - %s: (%s, %s)" node-id (type-of node-id) (org-roam-node-from-id node-id))
       (org-roam-node-visit (org-roam-node-from-id node-id)))))
 
 (defun advise-magit-section-show-for-org-roam (&rest _args)
