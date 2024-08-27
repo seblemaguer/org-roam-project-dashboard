@@ -47,7 +47,7 @@
   :type 'integer
   :group 'org-roam-project-dashboard)
 
-(defun org-roam-project-dashboard--get-projects (tag)
+(defun org-roam-project-dashboard~get-projects (tag)
   "Find all Org-roam node IDs and titles that have the specified TAG."
   (let ((nodes (org-roam-db-query
                 [:select [nodes:id nodes:title]
@@ -70,7 +70,7 @@ This predicate considers only TODO tasks to be done."
   (let ((title (nth 2 task)))
     (string-match-p "^TODO$" title)))
 
-(defun org-roam-project-dashboard--get-project-tasks (node-id)
+(defun org-roam-project-dashboard~get-project-tasks (node-id)
   "Get all tasks (TODOs) in the project with NODE-ID, including its subnodes."
   (let ((tasks (org-roam-db-query
                 [:select [out_nodes:id out_nodes:title out_nodes:todo]
@@ -86,9 +86,9 @@ This predicate considers only TODO tasks to be done."
                 node-id)))
     (cl-remove-if-not #'org-roam-project-dashboard-keep-task-predicate tasks)))
 
-(defun org-roam-project-dashboard--calculate-progress (node-id)
+(defun org-roam-project-dashboard~calculate-progress (node-id)
   "Calculate the completion progress of the project with NODE-ID, including its subnodes."
-  (let* ((tasks (org-roam-project-dashboard--get-project-tasks node-id))
+  (let* ((tasks (org-roam-project-dashboard~get-project-tasks node-id))
          (total (length tasks))
          (done (cl-count "DONE" tasks :key #'caddr :test #'string=)))
     (if (> total 0)
@@ -119,7 +119,7 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
   (concat (upcase (substring section-name 0 1))
           (downcase (substring section-name 1))))
 
-(defun org-roam-project-dashboard--generate-progress-bar (percentage)
+(defun org-roam-project-dashboard~generate-progress-bar (percentage)
   "Generate a color gradient progress bar for PERCENTAGE."
   (let* ((bar-width 30)
          (completed (/ (* percentage bar-width) 100))
@@ -136,9 +136,9 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
          (uncompleted-bar (propertize (make-string uncompleted ?░) 'face 'shadow)))
     (concat completed-bar uncompleted-bar (format " %d%%" percentage))))
 
-(defun org-roam-project-dashboard--insert-projects (tag)
+(defun org-roam-project-dashboard~insert-projects (tag)
   "Insert the list of PROJECTS into the dashboard buffer, with magit-sections and aligned progress bars."
-  (let ((projects (org-roam-project-dashboard--get-projects tag)))
+  (let ((projects (org-roam-project-dashboard~get-projects tag)))
     (when projects
       (let* ((longest-title-length
               (apply 'max (mapcar (lambda (project) (length (cadr project))) projects)))
@@ -149,11 +149,11 @@ COLOR1 and COLOR2 should be in the format '(R G B), where each value is between 
           (dolist (project sorted-projects)
             (let* ((node-id (car project))
                    (title (cadr project))
-                   (progress (org-roam-project-dashboard--calculate-progress node-id))
-                   (progress-bar (org-roam-project-dashboard--generate-progress-bar progress))
+                   (progress (org-roam-project-dashboard~calculate-progress node-id))
+                   (progress-bar (org-roam-project-dashboard~generate-progress-bar progress))
                    (padded-string (make-string (+ padding (- longest-title-length (length title))) ? ))
                    (tasks (cl-remove-if-not #'org-roam-project-dashboard-keep-todo-predicate
-                                            (org-roam-project-dashboard--get-project-tasks node-id))))
+                                            (org-roam-project-dashboard~get-project-tasks node-id))))
               (magit-insert-section (magit-section node-id 'hide)
                 (magit-insert-heading
                   (insert
@@ -227,7 +227,7 @@ Accepts any arguments passed by `magit-section-show` but ignores them."
           (error "The list of tags should not be empty!"))
         (magit-insert-section (magit-section "root")
           (dolist (tag org-roam-project-dashboard-list-tags)
-            (org-roam-project-dashboard--insert-projects tag)
+            (org-roam-project-dashboard~insert-projects tag)
             (insert "\n"))))
     (error "This function is only useable in org-roam-project-dashboard-mode")))
 
