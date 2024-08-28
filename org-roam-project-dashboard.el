@@ -58,6 +58,13 @@ If <=0, list all the tasks "
   "TODO face for org-roam-project-dashboard"
   :group 'org-roam-project-dashboard)
 
+(defface org-roam-project-dashboard-priority
+  '((t :inherit (org-priority org-modern-label)
+       :weight semibold
+       :inverse-video t))
+  "Priority face for org-roam-project-dashboard"
+  :group 'org-roam-project-dashboard)
+
 (defface org-roam-project-dashboard-header
   '((t :inherit outline-1 :weight ultra-bold :height 150))
   "Face for the header of a section in org-roam-project-dashboard."
@@ -101,7 +108,7 @@ This predicate considers only TODO tasks to be done."
   "Get all tasks (TODOs) in the project with NODE-ID, including its
 subnodes."
   (let ((tasks (org-roam-db-query
-                [:select [out_nodes:id out_nodes:title out_nodes:todo]
+                [:select [out_nodes:id out_nodes:title out_nodes:todo out_nodes:priority out_nodes:scheduled]
                          :from nodes out_nodes
                          :where (and (= file [:select in_nodes:file
                                                       :from nodes in_nodes
@@ -109,7 +116,8 @@ subnodes."
                                      (> level [:select in_nodes:level
                                                        :from nodes in_nodes
                                                        :where (= in_nodes:id $s1)])
-                                     (not (null out_nodes:todo)))]
+                                     (not (null out_nodes:todo)))
+                         :order-by [(asc out_nodes:priority)]]
                 node-id)))
     (cl-remove-if-not #'org-roam-project-dashboard-keep-task-predicate tasks)))
 
@@ -197,18 +205,31 @@ magit-sections and aligned progress bars."
               (magit-insert-section (magit-section node-id 'hide)
                 (magit-insert-heading
                   (insert " ")
-                  (insert (propertize (format "[[id:%s][%s]]" node-id title) 'face 'org-roam-project-dashboard-project))
+                  (insert (propertize (format "[[id:%s][%s]]" node-id title)
+                                      'face 'org-roam-project-dashboard-project))
                   (insert (format " %s%s\n"  padded-string progress-bar)))
                 (magit-insert-section-body
                   (dolist (task (if (> org-roam-project-dashboard-threshold-tasks 0)
                                     (seq-take tasks org-roam-project-dashboard-threshold-tasks)
                                   tasks))
                     (let* ((task-id (car task))
-                           (task-title (cadr task)))
+                           (task-title (nth 1 task))
+                           (task-todo (nth 2 task))
+                           (task-priority (nth 3 task))
+                           (task-is-scheduled (nth 4 task)))
                       (insert "  - ")
-                      (insert (propertize " TODO " 'face 'org-roam-project-dashboard-todo))
+                      (if task-is-scheduled
+                          (insert "✓ ")
+                        (insert "  "))
+                      (insert (propertize (format " %s " task-todo)
+                                          'face 'org-roam-project-dashboard-todo))
                       (insert " ")
-                      (insert (propertize (format "[[id:%s][%s]]\n" task-id task-title) 'face 'org-roam-project-dashboard-task))))
+                      (when task-priority
+                        (insert (propertize (format " %c " task-priority)
+                                            'face 'org-roam-project-dashboard-priority))
+                        (insert " "))
+                      (insert (propertize (format "[[id:%s][%s]]\n" task-id task-title)
+                                          'face 'org-roam-project-dashboard-task))))
                   (insert "\n"))))))))))
 
 (defun org-roam-project-dashboard-open-node-from-link ()
