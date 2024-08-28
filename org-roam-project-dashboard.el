@@ -50,6 +50,12 @@ If <=0, list all the tasks "
   :type 'integer
   :group 'org-roam-project-dashboard)
 
+(defcustom org-roam-project-dashboard-show-all-projects nil
+  "Flag to determine if all the projects should be shown (t) or
+ only the ones with tasks to be done (nil)."
+  :type 'boolean
+  :group 'org-roam-project-dashboard)
+
 (defface org-roam-project-dashboard-todo
   '((t :background "red1"
                  :foreground "black"
@@ -202,35 +208,36 @@ magit-sections and aligned progress bars."
                    (padded-string (make-string (+ padding (- longest-title-length (length title))) ? ))
                    (tasks (cl-remove-if-not #'org-roam-project-dashboard-keep-todo-predicate
                                             (org-roam-project-dashboard~get-project-tasks node-id))))
-              (magit-insert-section (magit-section node-id 'hide)
-                (magit-insert-heading
-                  (insert " ")
-                  (insert (propertize (format "[[id:%s][%s]]" node-id title)
-                                      'face 'org-roam-project-dashboard-project))
-                  (insert (format " %s%s\n"  padded-string progress-bar)))
-                (magit-insert-section-body
-                  (dolist (task (if (> org-roam-project-dashboard-threshold-tasks 0)
-                                    (seq-take tasks org-roam-project-dashboard-threshold-tasks)
-                                  tasks))
-                    (let* ((task-id (car task))
-                           (task-title (nth 1 task))
-                           (task-todo (nth 2 task))
-                           (task-priority (nth 3 task))
-                           (task-is-scheduled (nth 4 task)))
-                      (insert "  - ")
-                      (if task-is-scheduled
-                          (insert "✓ ")
-                        (insert "  "))
-                      (insert (propertize (format " %s " task-todo)
-                                          'face 'org-roam-project-dashboard-todo))
-                      (insert " ")
-                      (when task-priority
-                        (insert (propertize (format " %c " task-priority)
-                                            'face 'org-roam-project-dashboard-priority))
-                        (insert " "))
-                      (insert (propertize (format "[[id:%s][%s]]\n" task-id task-title)
-                                          'face 'org-roam-project-dashboard-task))))
-                  (insert "\n"))))))))))
+              (when (or (< progress 100) org-roam-project-dashboard-show-all-projects)
+                (magit-insert-section (magit-section node-id 'hide)
+                  (magit-insert-heading
+                    (insert " ")
+                    (insert (propertize (format "[[id:%s][%s]]" node-id title)
+                                        'face 'org-roam-project-dashboard-project))
+                    (insert (format " %s%s\n"  padded-string progress-bar)))
+                  (magit-insert-section-body
+                    (dolist (task (if (> org-roam-project-dashboard-threshold-tasks 0)
+                                      (seq-take tasks org-roam-project-dashboard-threshold-tasks)
+                                    tasks))
+                      (let* ((task-id (car task))
+                             (task-title (nth 1 task))
+                             (task-todo (nth 2 task))
+                             (task-priority (nth 3 task))
+                             (task-is-scheduled (nth 4 task)))
+                        (insert "  - ")
+                        (if task-is-scheduled
+                            (insert "✓ ")
+                          (insert "  "))
+                        (insert (propertize (format " %s " task-todo)
+                                            'face 'org-roam-project-dashboard-todo))
+                        (insert " ")
+                        (when task-priority
+                          (insert (propertize (format " %c " task-priority)
+                                              'face 'org-roam-project-dashboard-priority))
+                          (insert " "))
+                        (insert (propertize (format "[[id:%s][%s]]\n" task-id task-title)
+                                            'face 'org-roam-project-dashboard-task))))
+                    (insert "\n")))))))))))
 
 (defun org-roam-project-dashboard-open-node-from-link ()
   "Open the Org-roam node corresponding to the ID stored in the text properties."
