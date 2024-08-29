@@ -288,7 +288,8 @@ in the current buffer."
   "Refresh the content of the org roam project dashboard"
   (interactive)
   (if (eq (buffer-local-value 'major-mode (current-buffer)) 'org-roam-project-dashboard-mode)
-      (let ((inhibit-read-only t))
+      (let ((inhibit-read-only t)
+            (cur-pos (point)))
         (erase-buffer)
         (insert "Project Dashboard\n")
         (insert "=================\n\n")
@@ -298,7 +299,8 @@ in the current buffer."
           (dolist (tag org-roam-project-dashboard-list-tags)
             (org-roam-project-dashboard~insert-projects tag)
             (insert "\n")))
-        (org-roam-project-dashboard~make-links-clickable))
+        (org-roam-project-dashboard~make-links-clickable)
+        (goto-char cur-pos))
     (error "This function is only useable in org-roam-project-dashboard-mode")))
 
 ;;;###autoload
