@@ -110,6 +110,12 @@ This predicate considers only TODO tasks to be done."
   (let ((title (nth 2 task)))
     (string-match-p "^TODO$" title)))
 
+(defun org-roam-project-dashboard~demote-nil-priority (tasks)
+  "Demote the TASKS whose priority is nil"
+  (sort tasks
+        (lambda (task-a task-b)
+          (and (nth 3 task-a) (not (nth 3 task-b))))))
+
 (defun org-roam-project-dashboard~get-project-tasks (node-id)
   "Get all tasks (TODOs) in the project with NODE-ID, including its
 subnodes."
@@ -125,7 +131,8 @@ subnodes."
                                      (not (null out_nodes:todo)))
                          :order-by [(asc out_nodes:priority)]]
                 node-id)))
-    (cl-remove-if-not #'org-roam-project-dashboard-keep-task-predicate tasks)))
+    (org-roam-project-dashboard~demote-nil-priority
+     (cl-remove-if-not #'org-roam-project-dashboard-keep-task-predicate tasks))))
 
 (defun org-roam-project-dashboard~calculate-progress (node-id)
   "Calculate the completion progress of the project with NODE-ID,
