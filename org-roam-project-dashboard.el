@@ -95,26 +95,30 @@ If <=0, list all the tasks "
                          :on (= tags:node-id nodes:id)
                          :where (and (= tags:tag $s1) (= nodes:level 0))]
                 tag)))
-    nodes))
+
+    (mapcar (lambda (task)
+              (list :id (nth 0 task)
+                    :title (nth 1 task)))
+            nodes)))
 
 (defun org-roam-project-dashboard-keep-task-predicate (task)
   "Predicate to determine if a TASK should be considered as an actual task.
 The rule implemented in this function is that a valid task should
 not have a progression indicator."
-  (let ((title (nth 1 task)))
+  (let ((title (plist-get task :title)))
     (not (string-match-p "\\[\\([0-9]+%\\|[0-9]+/[0-9]+\\)\\]$" title))))
 
 (defun org-roam-project-dashboard-keep-todo-predicate (task)
   "Predicate to determine if the TASK remains to be done or not.
 This predicate considers only TODO tasks to be done."
-  (let ((title (nth 2 task)))
-    (string-match-p "^TODO$" title)))
+  (let ((todo (plist-get task :todo)))
+    (string-match-p "^TODO$" todo)))
 
 (defun org-roam-project-dashboard~demote-nil-priority (tasks)
   "Demote the TASKS whose priority is nil"
   (sort tasks
         (lambda (task-a task-b)
-          (and (nth 3 task-a) (not (nth 3 task-b))))))
+          (and (plist-get task-a :priority) (not (plist-get task-b :priority))))))
 
 (defun org-roam-project-dashboard~get-project-tasks (node-id)
   "Get all tasks (TODOs) in the project with NODE-ID, including its
@@ -131,6 +135,13 @@ subnodes."
                                      (not (null out_nodes:todo)))
                          :order-by [(asc out_nodes:priority)]]
                 node-id)))
+    (setq tasks (mapcar (lambda (task)
+                          (list :id (nth 0 task)
+                                :title (nth 1 task)
+                                :todo (nth 2 task)
+                                :priority (nth 3 task)
+                                :scheduled (nth 4 task)))
+                        tasks))
     (org-roam-project-dashboard~demote-nil-priority
      (cl-remove-if-not #'org-roam-project-dashboard-keep-task-predicate tasks))))
 
@@ -139,7 +150,7 @@ subnodes."
 including its subnodes."
   (let* ((tasks (org-roam-project-dashboard~get-project-tasks node-id))
          (total (length tasks))
-         (done (cl-count "DONE" tasks :key #'caddr :test #'string=)))
+         (done (cl-count "DONE" tasks :key (lambda (task) (plist-get task :todo)) :test #'string=)))
     (if (> total 0)
         (/ (* 100 done) total)
       0)))
@@ -198,9 +209,9 @@ magit-sections and aligned progress bars."
   (let ((projects (org-roam-project-dashboard~get-projects tag)))
     (when projects
       (let* ((longest-title-length
-              (apply 'max (mapcar (lambda (project) (length (cadr project))) projects)))
+              (apply 'max (mapcar (lambda (project) (length (plist-get project :title))) projects)))
              (padding 4)
-             (sorted-projects (sort projects (lambda (a b) (string< (cadr a) (cadr b))))))
+             (sorted-projects (sort projects (lambda (project-a project-b) (string< (plist-get project-a :title) (plist-get project-b :title))))))
         (magit-insert-section (magit-section tag)
           (magit-insert-heading
             (propertize (org-roam-project-dashboard~format-section tag)
@@ -208,8 +219,8 @@ magit-sections and aligned progress bars."
                         'org-roam-project-dashboard-header))
 
           (dolist (project sorted-projects)
-            (let* ((node-id (car project))
-                   (title (cadr project))
+            (let* ((node-id (plist-get project :id))
+                   (title (plist-get project :title))
                    (progress (org-roam-project-dashboard~calculate-progress node-id))
                    (progress-bar (org-roam-project-dashboard~generate-progress-bar progress))
                    (padded-string (make-string (+ padding (- longest-title-length (length title))) ? ))
@@ -226,11 +237,11 @@ magit-sections and aligned progress bars."
                     (dolist (task (if (> org-roam-project-dashboard-threshold-tasks 0)
                                       (seq-take tasks org-roam-project-dashboard-threshold-tasks)
                                     tasks))
-                      (let* ((task-id (car task))
-                             (task-title (nth 1 task))
-                             (task-todo (nth 2 task))
-                             (task-priority (nth 3 task))
-                             (task-is-scheduled (nth 4 task)))
+                      (let* ((task-id (plist-get task :id))
+                             (task-title (plist-get task :title))
+                             (task-todo (plist-get task :todo))
+                             (task-priority (plist-get task :priority))
+                             (task-is-scheduled (plist-get task :scheduled)))
                         (insert "  - ")
                         (if task-is-scheduled
                             (insert "✓ ")
