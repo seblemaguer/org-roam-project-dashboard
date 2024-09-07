@@ -302,7 +302,7 @@ in the current buffer."
           (delete-region (+ start (length title)) (+ start (length title) 2))
 
           ;; Apply clickable properties to the title
-          (add-text-properties start (+ start (length title))
+          (add-text-properties (line-beginning-position) (line-end-position)
                                `(mouse-face highlight
                                             help-echo ,(format "mouse-1: Visit org-roam node (id: %s / title: %s)" node-id title)
                                             follow-link t
