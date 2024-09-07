@@ -56,18 +56,33 @@ If <=0, list all the tasks "
   :type 'boolean
   :group 'org-roam-project-dashboard)
 
+(defcustom org-roam-project-dashboard-start-color "red3"
+  "The start color of the gradient for the progress bar in the dashboard."
+  :type 'color
+  :group 'org-roam-project-dashboard)
+
+(defcustom org-roam-project-dashboard-end-color "green3"
+   "The end color of the gradient for the progress bar in the dashboard."
+  :type 'color
+  :group 'org-roam-project-dashboard)
+
+(defcustom org-roam-project-dashboard-fill-character "█"
+  "The character used for the filled part of the progress bart"
+  :type 'character
+  :group 'org-roam-project-dashboard)
+
+(defcustom org-roam-project-dashboard-background-character ?░
+  "The character used for the filled part of the progress bart"
+  :type 'character
+  :group 'org-roam-project-dashboard)
+
 (defface org-roam-project-dashboard-todo
-  '((t :background "red1"
-                 :foreground "black"
-                 :weight bold
-                 :box (:line-width 2 :style released-button)))
+  '((t :weight ultra-bold :foreground "red"))
   "TODO face for org-roam-project-dashboard"
   :group 'org-roam-project-dashboard)
 
 (defface org-roam-project-dashboard-priority
-  '((t :inherit (org-priority org-modern-label)
-       :weight semibold
-       :inverse-video t))
+  '((t :weight ultra-bold :foreground "blue"))
   "Priority face for org-roam-project-dashboard"
   :group 'org-roam-project-dashboard)
 
@@ -159,12 +174,14 @@ including its subnodes."
   "Interpolate between COLOR1 and COLOR2 based on PERCENTAGE. COLOR1
 and COLOR2 should be in the format \\'(r g b), where each value is
 between 0 and 255."
-  (let ((r1 (nth 0 color1))
-        (g1 (nth 1 color1))
-        (b1 (nth 2 color1))
-        (r2 (nth 0 color2))
-        (g2 (nth 1 color2))
-        (b2 (nth 2 color2)))
+  (let* ((rgb1 (color-name-to-rgb color1))  ;; Get 16-bit RGB values
+         (rgb2 (color-name-to-rgb color2))
+         (r1 (* (nth 0 rgb1) 255))
+         (g1 (* (nth 1 rgb1) 255))
+         (b1 (* (nth 2 rgb1) 255))
+         (r2 (* (nth 0 rgb2) 255))
+         (g2 (* (nth 1 rgb2) 255))
+         (b2 (* (nth 2 rgb2) 255)))
     (list
      (+ r1 (round (* (/ percentage 100.0) (- r2 r1))))
      (+ g1 (round (* (/ percentage 100.0) (- g2 g1))))
@@ -185,22 +202,20 @@ between 0 and 255."
   (let* ((bar-width 30)
          (completed (/ (* percentage bar-width) 100))
          (uncompleted (- bar-width completed))
-         ;; Define the start and end colors for the gradient
-         (start-color '(255 0 0))  ;; Red
-         (end-color '(0 255 0))    ;; Green
          ;; Generate the gradient colors for the completed part
          (completed-bar
           (apply 'concat
                  (mapcar (lambda (i)
                            (let ((color (org-roam-project-dashboard~interpolate-color
-                                         start-color end-color
+                                         org-roam-project-dashboard-start-color
+                                         org-roam-project-dashboard-end-color
                                          (* 100.0 (/ i (float bar-width))))))
-                             (propertize "█"
+                             (propertize org-roam-project-dashboard-fill-character
                                          'face
                                          `(:foreground ,(org-roam-project-dashboard~rgb-to-hex color)))))
                          (number-sequence 1 completed))))
          ;; Color the uncompleted part with a shadow
-         (uncompleted-bar (propertize (make-string uncompleted ?░) 'face 'shadow)))
+         (uncompleted-bar (propertize (make-string uncompleted org-roam-project-dashboard-background-character) 'face 'shadow)))
     (concat completed-bar uncompleted-bar (format " %d%%" percentage))))
 
 (defun org-roam-project-dashboard~insert-projects (tag)
