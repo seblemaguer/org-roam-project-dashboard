@@ -168,7 +168,7 @@ including its subnodes."
          (done (cl-count "DONE" tasks :key (lambda (task) (plist-get task :todo)) :test #'string=)))
     (if (> total 0)
         (/ (* 100 done) total)
-      0)))
+      100)))
 
 (defun org-roam-project-dashboard~interpolate-color (color1 color2 percentage)
   "Interpolate between COLOR1 and COLOR2 based on PERCENTAGE. COLOR1
