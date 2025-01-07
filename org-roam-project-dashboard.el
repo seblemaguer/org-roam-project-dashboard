@@ -40,7 +40,12 @@
   :group 'org-roam-project-dashboard)
 
 (defcustom org-roam-project-dashboard-list-tags '("research" "tools")
-  "List of tags which defines the categories of projects"
+  "List of tags which defines the categories of projects."
+  :type 'list
+  :group 'org-roam-project-dashboard)
+
+(defcustom org-roam-project-dashboard-ignored-tags '("onhold")
+  "List of tags which indicating that the project should be ignored."
   :type 'list
   :group 'org-roam-project-dashboard)
 
@@ -115,6 +120,11 @@ If <=0, list all the tasks "
               (list :id (nth 0 task)
                     :title (nth 1 task)))
             nodes)))
+
+(defun org-roam-project-dashboard~validate-tags (node-id node-tags)
+  "List all the tags for the node identified by NODE-ID which are part of the set of NODE-TAGS."
+  (when node-tags
+    (cl-intersection (org-roam-node-tags (org-roam-node-from-id node-id)) node-tags :test 'string=)))
 
 (defun org-roam-project-dashboard-keep-task-predicate (task)
   "Predicate to determine if a TASK should be considered as an actual task.
@@ -234,7 +244,8 @@ magit-sections and aligned progress bars."
                         'org-roam-project-dashboard-header))
 
           (dolist (project sorted-projects)
-            (let* ((node-id (plist-get project :id))
+            (unless (org-roam-project-dashboard~validate-tags (plist-get project :id) org-roam-project-dashboard-ignored-tags)
+              (let* ((node-id (plist-get project :id))
                    (title (plist-get project :title))
                    (progress (org-roam-project-dashboard~calculate-progress node-id))
                    (progress-bar (org-roam-project-dashboard~generate-progress-bar progress))
