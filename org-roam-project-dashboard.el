@@ -67,7 +67,7 @@ If <=0, list all the tasks "
   :group 'org-roam-project-dashboard)
 
 (defcustom org-roam-project-dashboard-end-color "green3"
-   "The end color of the gradient for the progress bar in the dashboard."
+  "The end color of the gradient for the progress bar in the dashboard."
   :type 'color
   :group 'org-roam-project-dashboard)
 
@@ -246,42 +246,42 @@ magit-sections and aligned progress bars."
           (dolist (project sorted-projects)
             (unless (org-roam-project-dashboard~validate-tags (plist-get project :id) org-roam-project-dashboard-ignored-tags)
               (let* ((node-id (plist-get project :id))
-                   (title (plist-get project :title))
-                   (progress (org-roam-project-dashboard~calculate-progress node-id))
-                   (progress-bar (org-roam-project-dashboard~generate-progress-bar progress))
-                   (padded-string (make-string (+ padding (- longest-title-length (length title))) ? ))
-                   (tasks (cl-remove-if-not #'org-roam-project-dashboard-keep-todo-predicate
-                                            (org-roam-project-dashboard~get-project-tasks node-id))))
-              (when (or (< progress 100) org-roam-project-dashboard-show-all-projects)
-                (magit-insert-section (magit-section node-id 'hide)
-                  (magit-insert-heading
-                    (insert " ")
-                    (insert (propertize (format "[[id:%s][%s]]" node-id title)
-                                        'face 'org-roam-project-dashboard-project))
-                    (insert (format " %s%s\n"  padded-string progress-bar)))
-                  (magit-insert-section-body
-                    (dolist (task (if (> org-roam-project-dashboard-threshold-tasks 0)
-                                      (seq-take tasks org-roam-project-dashboard-threshold-tasks)
-                                    tasks))
-                      (let* ((task-id (plist-get task :id))
-                             (task-title (plist-get task :title))
-                             (task-todo (plist-get task :todo))
-                             (task-priority (plist-get task :priority))
-                             (task-is-scheduled (plist-get task :scheduled)))
-                        (insert "  - ")
-                        (if task-is-scheduled
-                            (insert "✓ ")
-                          (insert "  "))
-                        (insert (propertize (format " %s " task-todo)
-                                            'face 'org-roam-project-dashboard-todo))
-                        (insert " ")
-                        (when task-priority
-                          (insert (propertize (format " %c " task-priority)
-                                              'face 'org-roam-project-dashboard-priority))
-                          (insert " "))
-                        (insert (propertize (format "[[id:%s][%s]]\n" task-id task-title)
-                                            'face 'org-roam-project-dashboard-task))))
-                    (insert "\n")))))))))))
+                     (title (plist-get project :title))
+                     (progress (org-roam-project-dashboard~calculate-progress node-id))
+                     (progress-bar (org-roam-project-dashboard~generate-progress-bar progress))
+                     (padded-string (make-string (+ padding (- longest-title-length (length title))) ? ))
+                     (tasks (cl-remove-if-not #'org-roam-project-dashboard-keep-todo-predicate
+                                              (org-roam-project-dashboard~get-project-tasks node-id))))
+                (when (or (< progress 100) org-roam-project-dashboard-show-all-projects)
+                  (magit-insert-section (magit-section node-id 'hide)
+                    (magit-insert-heading
+                      (insert " ")
+                      (insert (propertize (format "[[id:%s][%s]]" node-id title)
+                                          'face 'org-roam-project-dashboard-project))
+                      (insert (format " %s%s\n"  padded-string progress-bar)))
+                    (magit-insert-section-body
+                      (dolist (task (if (> org-roam-project-dashboard-threshold-tasks 0)
+                                        (seq-take tasks org-roam-project-dashboard-threshold-tasks)
+                                      tasks))
+                        (let* ((task-id (plist-get task :id))
+                               (task-title (plist-get task :title))
+                               (task-todo (plist-get task :todo))
+                               (task-priority (plist-get task :priority))
+                               (task-is-scheduled (plist-get task :scheduled)))
+                          (insert "  - ")
+                          (if task-is-scheduled
+                              (insert "✓ ")
+                            (insert "  "))
+                          (insert (propertize (format " %s " task-todo)
+                                              'face 'org-roam-project-dashboard-todo))
+                          (insert " ")
+                          (when task-priority
+                            (insert (propertize (format " %c " task-priority)
+                                                'face 'org-roam-project-dashboard-priority))
+                            (insert " "))
+                          (insert (propertize (format "[[id:%s][%s]]\n" task-id task-title)
+                                              'face 'org-roam-project-dashboard-task))))
+                      (insert "\n"))))))))))))
 
 (defun org-roam-project-dashboard-open-node-from-link ()
   "Open the Org-roam node corresponding to the ID stored in the text properties."
