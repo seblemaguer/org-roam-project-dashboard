@@ -4,7 +4,7 @@
 ;;
 
 ;; Author: Sébastien Le Maguer <sebastien.lemaguer@helsinki.fi> and ChatGPT
-;; Version: 1.0
+;; Version: 1.1
 ;; Package-Requires: ((emacs "29.1") (org-roam "2.2.0") (magit-section "0.1"))
 ;; Keywords: outlines, org-roam, dashboard, project, tags
 ;; Homepage: https://github.com/seblemaguer/org-roam-project-dashboard
@@ -41,12 +41,12 @@
 
 (defcustom org-roam-project-dashboard-list-tags '("research" "tools")
   "List of tags which defines the categories of projects."
-  :type 'list
+  :type '(list string)
   :group 'org-roam-project-dashboard)
 
 (defcustom org-roam-project-dashboard-ignored-tags '("onhold")
   "List of tags which indicating that the project should be ignored."
-  :type 'list
+  :type '(list string)
   :group 'org-roam-project-dashboard)
 
 (defcustom org-roam-project-dashboard-threshold-tasks 0
@@ -72,18 +72,23 @@ If <=0, list all the tasks "
   :group 'org-roam-project-dashboard)
 
 (defcustom org-roam-project-dashboard-fill-character "█"
-  "The character used for the filled part of the progress bart"
+  "The character used for the filled part of the progress bar."
   :type 'character
   :group 'org-roam-project-dashboard)
 
 (defcustom org-roam-project-dashboard-background-character ?░
-  "The character used for the filled part of the progress bart"
+  "The character used for the filled part of the progress bar."
   :type 'character
   :group 'org-roam-project-dashboard)
 
 (defface org-roam-project-dashboard-todo
   '((t :weight ultra-bold :foreground "red"))
   "TODO face for org-roam-project-dashboard"
+  :group 'org-roam-project-dashboard)
+
+(defface org-roam-project-dashboard-effort
+  '((t :weight ultra-bold))
+  "Effort face for org-roam-project-dashboard"
   :group 'org-roam-project-dashboard)
 
 (defface org-roam-project-dashboard-priority
@@ -122,7 +127,8 @@ If <=0, list all the tasks "
             nodes)))
 
 (defun org-roam-project-dashboard~validate-tags (node-id node-tags)
-  "List all the tags for the node identified by NODE-ID which are part of the set of NODE-TAGS."
+  "List all the tags for the node identified by NODE-ID which are part of
+the set of NODE-TAGS."
   (when node-tags
     (cl-intersection (org-roam-node-tags (org-roam-node-from-id node-id)) node-tags :test 'string=)))
 
@@ -149,7 +155,7 @@ This predicate considers only TODO tasks to be done."
   "Get all tasks (TODOs) in the project with NODE-ID, including its
 subnodes."
   (let ((tasks (org-roam-db-query
-                [:select [out_nodes:id out_nodes:title out_nodes:todo out_nodes:priority out_nodes:scheduled]
+                [:select [out_nodes:id out_nodes:title out_nodes:todo out_nodes:priority out_nodes:scheduled out_nodes:properties]
                          :from nodes out_nodes
                          :where (and (= file [:select in_nodes:file
                                                       :from nodes in_nodes
@@ -165,7 +171,8 @@ subnodes."
                                 :title (nth 1 task)
                                 :todo (nth 2 task)
                                 :priority (nth 3 task)
-                                :scheduled (nth 4 task)))
+                                :scheduled (nth 4 task)
+                                :properties (nth 5 task)))
                         tasks))
     (org-roam-project-dashboard~demote-nil-priority
      (cl-remove-if-not #'org-roam-project-dashboard-keep-task-predicate tasks))))
@@ -179,6 +186,23 @@ including its subnodes."
     (if (> total 0)
         (/ (* 100 done) total)
       100)))
+
+(defun org-roam-project-dashboard~compute-total-effort (tasks)
+  "Compute the total effort require by a project whose TASKS are provided
+as a parameter."
+  (let* ((total-time 0))
+    (dolist (task tasks)
+      (let ((effort (cdr (assoc "EFFORT" (plist-get task :properties))))
+            (hours 0)
+            (minutes 0))
+
+        (when effort
+          ;; Step 2: Parse the hours and minutes from the EFFORT string
+          (when (string-match "\\([0-9]+\\):\\([0-9]+\\)" effort)
+            (setq hours (string-to-number (match-string 1 effort)))  ;; Extract hours
+            (setq minutes (string-to-number (match-string 2 effort))))
+          (setq total-time (+ total-time (* hours 60) minutes)))))
+    (format "%03d:%02d:%02d" (/ total-time 1440) (/ (% total-time 1440) 60) (% total-time 60))))
 
 (defun org-roam-project-dashboard~interpolate-color (color1 color2 percentage)
   "Interpolate between COLOR1 and COLOR2 based on PERCENTAGE. COLOR1
@@ -228,6 +252,7 @@ between 0 and 255."
          (uncompleted-bar (propertize (make-string uncompleted org-roam-project-dashboard-background-character) 'face 'shadow)))
     (concat completed-bar uncompleted-bar (format " %d%%" percentage))))
 
+
 (defun org-roam-project-dashboard~insert-projects (tag)
   "Insert the list of PROJECTS into the dashboard buffer, with
 magit-sections and aligned progress bars."
@@ -251,14 +276,22 @@ magit-sections and aligned progress bars."
                      (progress-bar (org-roam-project-dashboard~generate-progress-bar progress))
                      (padded-string (make-string (+ padding (- longest-title-length (length title))) ? ))
                      (tasks (cl-remove-if-not #'org-roam-project-dashboard-keep-todo-predicate
-                                              (org-roam-project-dashboard~get-project-tasks node-id))))
+                                              (org-roam-project-dashboard~get-project-tasks node-id)))
+                     (total-effort (org-roam-project-dashboard~compute-total-effort tasks)))
                 (when (or (< progress 100) org-roam-project-dashboard-show-all-projects)
                   (magit-insert-section (magit-section node-id 'hide)
                     (magit-insert-heading
                       (insert " ")
+                      (if total-effort
+                          (progn
+                            (insert (propertize (format "[%s]" total-effort)
+                                                'face 'org-roam-project-dashboard-effort)))
+                        (insert "       "))
+                      (insert " ")
                       (insert (propertize (format "[[id:%s][%s]]" node-id title)
                                           'face 'org-roam-project-dashboard-project))
-                      (insert (format " %s%s\n"  padded-string progress-bar)))
+                      (insert (format " %s%s"  padded-string progress-bar))
+                      (insert "\n"))
                     (magit-insert-section-body
                       (dolist (task (if (> org-roam-project-dashboard-threshold-tasks 0)
                                         (seq-take tasks org-roam-project-dashboard-threshold-tasks)
@@ -267,11 +300,20 @@ magit-sections and aligned progress bars."
                                (task-title (plist-get task :title))
                                (task-todo (plist-get task :todo))
                                (task-priority (plist-get task :priority))
-                               (task-is-scheduled (plist-get task :scheduled)))
+                               (task-is-scheduled (plist-get task :scheduled))
+                               (effort (cdr (assoc "EFFORT" (plist-get task :properties)))))
                           (insert "  - ")
                           (if task-is-scheduled
                               (insert "✓ ")
                             (insert "  "))
+
+                          (if effort
+                              (progn
+                                (insert (propertize (format "[%s]" effort)
+                                                    'face 'org-roam-project-dashboard-effort)))
+                            (insert "      "))
+
+                          (insert " ")
                           (insert (propertize (format " %s " task-todo)
                                               'face 'org-roam-project-dashboard-todo))
                           (insert " ")
@@ -279,8 +321,10 @@ magit-sections and aligned progress bars."
                             (insert (propertize (format " %c " task-priority)
                                                 'face 'org-roam-project-dashboard-priority))
                             (insert " "))
-                          (insert (propertize (format "[[id:%s][%s]]\n" task-id task-title)
-                                              'face 'org-roam-project-dashboard-task))))
+                          (insert (propertize (format "[[id:%s][%s]]" task-id task-title)
+                                              'face 'org-roam-project-dashboard-task))
+                          (insert "\n")
+                          ))
                       (insert "\n"))))))))))))
 
 (defun org-roam-project-dashboard-open-node-from-link ()
