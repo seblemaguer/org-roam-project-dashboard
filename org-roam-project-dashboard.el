@@ -367,6 +367,30 @@ in the current buffer."
                                                       map)
                                             org-roam-id ,node-id)))))))
 
+
+(defun org-roam-project-dashboard~insert-header ()
+  "Insert the header."
+  (let* ((width (window-width))
+         (text "Project Dashboard")
+         (text-len (length text))
+         (padding 5) ;; spaces inside box on each side
+         (box-width (+ text-len (* 2 padding)))
+         (left-pad (/ (- width box-width) 2))
+         (left-pad (max 0 left-pad)) ;; don't go negative
+         (spaces (make-string left-pad ?\s))
+         (line-top (concat spaces "╔" (make-string box-width ?═) "╗\n"))
+         ;; center the text inside the box with padding spaces:
+         (middle (concat spaces
+                         "║"
+                         (make-string padding ?\s)
+                         text
+                         (make-string padding ?\s)
+                         "║\n"))
+         (line-bottom (concat spaces "╚" (make-string box-width ?═) "╝\n")))
+    (insert line-top middle line-bottom)
+    (dotimes (i 5) (insert "\n"))))
+
+
 (define-derived-mode org-roam-project-dashboard-mode magit-section-mode "Project Dashboard"
   "Major mode for project dashboards based on magit-section-mode."
   (advice-add 'magit-section-show :after #'org-roam-project-dashboard~advice-magit-section-show)
@@ -379,8 +403,7 @@ in the current buffer."
       (let ((inhibit-read-only t)
             (cur-pos (point)))
         (erase-buffer)
-        (insert "Project Dashboard\n")
-        (insert "=================\n\n")
+        (org-roam-project-dashboard~insert-header)
         (unless org-roam-project-dashboard-list-tags
           (error "The list of tags should not be empty!"))
         (magit-insert-section (magit-section "root")
