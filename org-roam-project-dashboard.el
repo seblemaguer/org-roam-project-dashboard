@@ -250,7 +250,7 @@ between 0 and 255."
                          (number-sequence 1 completed))))
          ;; Color the uncompleted part with a shadow
          (uncompleted-bar (propertize (make-string uncompleted org-roam-project-dashboard-background-character) 'face 'shadow)))
-    (concat completed-bar uncompleted-bar (format " %d%%" percentage))))
+    (concat completed-bar uncompleted-bar (format " %2d%%" percentage))))
 
 
 (defun org-roam-project-dashboard~insert-projects (tag)
@@ -274,10 +274,10 @@ magit-sections and aligned progress bars."
                      (title (plist-get project :title))
                      (progress (org-roam-project-dashboard~calculate-progress node-id))
                      (progress-bar (org-roam-project-dashboard~generate-progress-bar progress))
-                     (padded-string (make-string (+ padding (- longest-title-length (length title))) ? ))
                      (tasks (cl-remove-if-not #'org-roam-project-dashboard-keep-todo-predicate
                                               (org-roam-project-dashboard~get-project-tasks node-id)))
-                     (total-effort (org-roam-project-dashboard~compute-total-effort tasks)))
+                     (total-effort (org-roam-project-dashboard~compute-total-effort tasks))
+                     (padded-string (make-string (+ padding (- (window-body-width) (length title) 10 (length total-effort) (length progress-bar))) ? )))
                 (when (or (< progress 100) org-roam-project-dashboard-show-all-projects)
                   (magit-insert-section (magit-section node-id 'hide)
                     (magit-insert-heading
