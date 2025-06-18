@@ -182,7 +182,9 @@ subnodes."
 including its subnodes."
   (let* ((tasks (org-roam-project-dashboard~get-project-tasks node-id))
          (total (length tasks))
-         (done (cl-count "DONE" tasks :key (lambda (task) (plist-get task :todo)) :test #'string=)))
+         (done (cl-count-if
+                (lambda (task) (member (plist-get task :todo) org-done-keywords-for-agenda))
+                tasks)))
     (if (> total 0)
         (/ (* 100 done) total)
       100)))
