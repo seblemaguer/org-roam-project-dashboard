@@ -258,9 +258,7 @@ between 0 and 255."
 magit-sections and aligned progress bars."
   (let ((projects (org-roam-project-dashboard~get-projects tag)))
     (when projects
-      (let* ((longest-title-length
-              (apply 'max (mapcar (lambda (project) (length (plist-get project :title))) projects)))
-             (padding 4)
+      (let* ((padding 4)
              (sorted-projects (sort projects (lambda (project-a project-b) (string< (plist-get project-a :title) (plist-get project-b :title))))))
         (magit-insert-section (magit-section tag)
           (magit-insert-heading
@@ -388,7 +386,7 @@ in the current buffer."
                          "║\n"))
          (line-bottom (concat spaces "╚" (make-string box-width ?═) "╝\n")))
     (insert line-top middle line-bottom)
-    (dotimes (i 5) (insert "\n"))))
+    (dotimes (_ 5) (insert "\n"))))
 
 
 (define-derived-mode org-roam-project-dashboard-mode magit-section-mode "Project Dashboard"
