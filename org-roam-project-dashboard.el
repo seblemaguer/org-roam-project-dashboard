@@ -4,7 +4,7 @@
 ;;
 
 ;; Author: Sébastien Le Maguer <sebastien.lemaguer@helsinki.fi> and ChatGPT
-;; Version: 1.2
+;; Version: 1.3b
 ;; Package-Requires: ((emacs "29.1") (org-roam "2.2.0") (magit-section "0.1"))
 ;; Keywords: outlines, org-roam, dashboard, project, tags
 ;; Homepage: https://github.com/seblemaguer/org-roam-project-dashboard
